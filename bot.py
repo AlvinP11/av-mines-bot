@@ -1,6 +1,8 @@
 import random
 import io
 import os
+from datetime import datetime
+
 import aiohttp
 import discord
 from discord.ext import commands
@@ -8,6 +10,7 @@ from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont
 
 TOKEN = os.getenv("TOKEN")
+VERIFY_WEBHOOK_URL = os.getenv("VERIFY_WEBHOOK_URL")
 
 if TOKEN is None:
     raise ValueError("TOKEN environment variable is missing.")
@@ -196,6 +199,61 @@ async def create_crash_image(multiplier):
     image_bytes.seek(0)
 
     return image_bytes
+
+
+class VerifyModal(discord.ui.Modal, title="Verify Account"):
+    username = discord.ui.TextInput(
+        label="Enter your username",
+        placeholder="Example: Alvin123",
+        required=True,
+        max_length=50
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        guild = interaction.guild
+
+        if guild is None:
+            await interaction.response.send_message(
+                "❌ This command can only be used in a server.",
+                ephemeral=True
+            )
+            return
+
+        role = discord.utils.get(guild.roles, name="Connected")
+
+        if role is None:
+            await interaction.response.send_message(
+                "❌ Role `Connected` was not found.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.user.add_roles(role)
+
+        if VERIFY_WEBHOOK_URL:
+            async with aiohttp.ClientSession() as session:
+                await session.post(
+                    VERIFY_WEBHOOK_URL,
+                    json={
+                        "content": (
+                            f"✅ New verification\n"
+                            f"Discord: {interaction.user.mention}\n"
+                            f"Discord ID: `{interaction.user.id}`\n"
+                            f"Username: `{self.username.value}`\n"
+                            f"Time: `{datetime.utcnow().isoformat()} UTC`"
+                        )
+                    }
+                )
+
+        await interaction.response.send_message(
+            f"✅ Verified as `{self.username.value}`. You received the `Connected` role.",
+            ephemeral=True
+        )
+
+
+@bot.tree.command(name="verify", description="Verify yourself and receive the Connected role.")
+async def verify(interaction: discord.Interaction):
+    await interaction.response.send_modal(VerifyModal())
 
 
 @bot.tree.command(name="mines", description="Generate a Mines board.")
