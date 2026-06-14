@@ -10,7 +10,7 @@ from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont
 
 TOKEN = os.getenv("TOKEN")
-VERIFY_WEBHOOK_URL = os.getenv("https://discord.com/api/webhooks/1496970637099405463/Kd1UZyzpK4dxsi7R6SBDS_viczG8xgrljfCUHBOBpn63eL--UUOnDZkY3qOfWE8Cz15x")
+VERIFY_WEBHOOK_URL = os.getenv("VERIFY_WEBHOOK_URL")
 
 if TOKEN is None:
     raise ValueError("TOKEN environment variable is missing.")
