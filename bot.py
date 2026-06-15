@@ -179,29 +179,35 @@ async def create_crash_image(multiplier):
     image = Image.new("RGBA", (width, height), (14, 18, 30, 255))
     draw = ImageDraw.Draw(image)
 
-    title_font = get_font(48, bold=True)
-    multi_font = get_font(150, bold=True)
-    small_font = get_font(32, bold=True)
+    title_font = get_font(52, bold=True)
+    multi_font = get_font(170, bold=True)
+    small_font = get_font(34, bold=True)
 
     draw.rounded_rectangle(
         [30, 30, width - 30, height - 30],
         radius=30,
         fill=(22, 28, 48, 255),
         outline=(43, 140, 255, 255),
-        width=7
+        width=8
     )
 
     title_text = "AV Crash Predictor"
     multi_text = f"{multiplier}x"
     small_text = "Generated multiplier"
 
-    draw.text((60, 55), title_text, font=title_font, fill=(255, 255, 255, 255))
+    draw.text(
+        (60, 55),
+        title_text,
+        font=title_font,
+        fill=(255, 255, 255, 255)
+    )
 
     bbox = draw.textbbox((0, 0), multi_text, font=multi_font)
     text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
 
     multi_x = (width - text_width) // 2
-    multi_y = 145
+    multi_y = (height - text_height) // 2 - 10
 
     draw.text(
         (multi_x, multi_y),
@@ -211,7 +217,7 @@ async def create_crash_image(multiplier):
     )
 
     draw.text(
-        (60, 340),
+        (60, 335),
         small_text,
         font=small_font,
         fill=(180, 190, 210, 255)
@@ -222,7 +228,6 @@ async def create_crash_image(multiplier):
     image_bytes.seek(0)
 
     return image_bytes
-
 
 class VerifyModal(discord.ui.Modal, title="Verify Account"):
     username = discord.ui.TextInput(
