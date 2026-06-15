@@ -173,31 +173,54 @@ async def create_slide_image(result):
 
 
 async def create_crash_image(multiplier):
-    width = 720
-    height = 360
+    width = 900
+    height = 420
 
     image = Image.new("RGBA", (width, height), (14, 18, 30, 255))
     draw = ImageDraw.Draw(image)
 
-    title_font = get_font(42, bold=True)
-    multi_font = get_font(110, bold=True)
-    small_font = get_font(28, bold=True)
+    title_font = get_font(48, bold=True)
+    multi_font = get_font(150, bold=True)
+    small_font = get_font(32, bold=True)
 
     draw.rounded_rectangle(
-        [28, 28, width - 28, height - 28],
-        radius=26,
+        [30, 30, width - 30, height - 30],
+        radius=30,
         fill=(22, 28, 48, 255),
         outline=(43, 140, 255, 255),
-        width=6
+        width=7
     )
 
-    draw.text((60, 55), "AV Crash Predictor", font=title_font, fill=(255, 255, 255, 255))
-    draw.text((60, 135), f"{multiplier}x", font=multi_font, fill=(43, 200, 255, 255))
-    draw.text((60, 285), "Generated multiplier", font=small_font, fill=(180, 190, 210, 255))
+    title_text = "AV Crash Predictor"
+    multi_text = f"{multiplier}x"
+    small_text = "Generated multiplier"
+
+    draw.text((60, 55), title_text, font=title_font, fill=(255, 255, 255, 255))
+
+    bbox = draw.textbbox((0, 0), multi_text, font=multi_font)
+    text_width = bbox[2] - bbox[0]
+
+    multi_x = (width - text_width) // 2
+    multi_y = 145
+
+    draw.text(
+        (multi_x, multi_y),
+        multi_text,
+        font=multi_font,
+        fill=(43, 200, 255, 255)
+    )
+
+    draw.text(
+        (60, 340),
+        small_text,
+        font=small_font,
+        fill=(180, 190, 210, 255)
+    )
 
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
+
     return image_bytes
 
 
