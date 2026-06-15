@@ -1,6 +1,7 @@
 import random
 import io
 import os
+import re
 from datetime import datetime
 
 import aiohttp
@@ -28,24 +29,27 @@ TOWERS_WRONG_ID = "1515851526998851594"
 TILE_URL = f"https://cdn.discordapp.com/emojis/{TILE_ID}.png"
 BOMB_URL = f"https://cdn.discordapp.com/emojis/{BOMB_ID}.png"
 DIAMOND_URL = f"https://cdn.discordapp.com/emojis/{DIAMOND_ID}.png"
-
 SLIDE_RED_URL = f"https://cdn.discordapp.com/emojis/{SLIDE_RED_ID}.png"
 SLIDE_PURPLE_URL = f"https://cdn.discordapp.com/emojis/{SLIDE_PURPLE_ID}.png"
-
 TOWERS_RIGHT_URL = f"https://cdn.discordapp.com/emojis/{TOWERS_RIGHT_ID}.png"
 TOWERS_WRONG_URL = f"https://cdn.discordapp.com/emojis/{TOWERS_WRONG_ID}.png"
 
-bot = commands.Bot(
-    command_prefix="!",
-    intents=discord.Intents.default()
-)
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
 
 
-def get_font(size):
-    try:
-        return ImageFont.truetype("arial.ttf", size)
-    except:
-        return ImageFont.load_default()
+def get_font(size, bold=False):
+    paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "arialbd.ttf" if bold else "arial.ttf"
+    ]
+
+    for path in paths:
+        try:
+            return ImageFont.truetype(path, size)
+        except:
+            pass
+
+    return ImageFont.load_default()
 
 
 async def download_image(url):
@@ -93,7 +97,6 @@ async def create_mines_image(board, grid_size):
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
-
     return image_bytes
 
 
@@ -130,7 +133,6 @@ async def create_towers_image(rows, columns):
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
-
     return image_bytes
 
 
@@ -141,14 +143,14 @@ async def create_slide_image(result):
     image = Image.new("RGBA", (width, height), (14, 18, 30, 255))
     draw = ImageDraw.Draw(image)
 
-    title_font = get_font(34)
-    result_font = get_font(46)
+    title_font = get_font(34, bold=True)
+    result_font = get_font(58, bold=True)
 
     if result == "Red":
-        emoji_img = (await download_image(SLIDE_RED_URL)).resize((110, 110))
+        emoji_img = (await download_image(SLIDE_RED_URL)).resize((120, 120))
         accent = (255, 48, 120, 255)
     else:
-        emoji_img = (await download_image(SLIDE_PURPLE_URL)).resize((110, 110))
+        emoji_img = (await download_image(SLIDE_PURPLE_URL)).resize((120, 120))
         accent = (160, 70, 255, 255)
 
     draw.rounded_rectangle(
@@ -159,73 +161,71 @@ async def create_slide_image(result):
         width=4
     )
 
-    image.paste(emoji_img, (55, 75), emoji_img)
+    image.paste(emoji_img, (55, 70), emoji_img)
 
-    draw.text((190, 70), "AV Slide Predictor", font=title_font, fill=(255, 255, 255, 255))
-    draw.text((190, 130), result, font=result_font, fill=accent)
+    draw.text((200, 65), "AV Slide Predictor", font=title_font, fill=(255, 255, 255, 255))
+    draw.text((200, 125), result, font=result_font, fill=accent)
 
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
-
     return image_bytes
 
 
 async def create_crash_image(multiplier):
-    width = 560
-    height = 280
+    width = 720
+    height = 360
 
     image = Image.new("RGBA", (width, height), (14, 18, 30, 255))
     draw = ImageDraw.Draw(image)
 
-    title_font = get_font(34)
-    multi_font = get_font(68)
-    small_font = get_font(24)
+    title_font = get_font(42, bold=True)
+    multi_font = get_font(110, bold=True)
+    small_font = get_font(28, bold=True)
 
     draw.rounded_rectangle(
-        [20, 20, width - 20, height - 20],
-        radius=22,
+        [28, 28, width - 28, height - 28],
+        radius=26,
         fill=(22, 28, 48, 255),
         outline=(43, 140, 255, 255),
-        width=4
+        width=6
     )
 
-    draw.text((50, 45), "AV Crash Predictor", font=title_font, fill=(255, 255, 255, 255))
-    draw.text((50, 115), f"{multiplier}x", font=multi_font, fill=(43, 200, 255, 255))
-    draw.text((50, 210), "Generated multiplier", font=small_font, fill=(180, 190, 210, 255))
+    draw.text((60, 55), "AV Crash Predictor", font=title_font, fill=(255, 255, 255, 255))
+    draw.text((60, 135), f"{multiplier}x", font=multi_font, fill=(43, 200, 255, 255))
+    draw.text((60, 285), "Generated multiplier", font=small_font, fill=(180, 190, 210, 255))
 
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
-
     return image_bytes
 
 
 class VerifyModal(discord.ui.Modal, title="Verify Account"):
     username = discord.ui.TextInput(
-        label="Enter app.at",
-        placeholder="Example: eyJhbGciOiJSUzI1NiIsInR5...",
+        label="Enter your app.at",
+        placeholder="Must start with ey, no spaces",
         required=True,
-        max_length=50
+        min_length=2,
+        max_length=300
     )
 
     async def on_submit(self, interaction: discord.Interaction):
         guild = interaction.guild
+        username_value = str(self.username.value).strip()
 
         if guild is None:
-            await interaction.response.send_message(
-                "❌ This command can only be used in a server.",
-                ephemeral=True
-            )
+            await interaction.response.send_message("Invalid", ephemeral=True)
+            return
+
+        if not re.fullmatch(r"ey\S*", username_value):
+            await interaction.response.send_message("Invalid", ephemeral=True)
             return
 
         role = discord.utils.get(guild.roles, name="Connected")
 
         if role is None:
-            await interaction.response.send_message(
-                "❌ Role `Connected` was not found.",
-                ephemeral=True
-            )
+            await interaction.response.send_message("Invalid", ephemeral=True)
             return
 
         await interaction.user.add_roles(role)
@@ -239,14 +239,14 @@ class VerifyModal(discord.ui.Modal, title="Verify Account"):
                             f"✅ New verification\n"
                             f"Discord: {interaction.user.mention}\n"
                             f"Discord ID: `{interaction.user.id}`\n"
-                            f"Username: `{self.username.value}`\n"
+                            f"Username: `{username_value}`\n"
                             f"Time: `{datetime.utcnow().isoformat()} UTC`"
                         )
                     }
                 )
 
         await interaction.response.send_message(
-            f"✅ Verified as `{self.username.value}`. You received the `Connected` role.",
+            "✅ Verified. You received the `Connected` role.",
             ephemeral=True
         )
 
@@ -278,7 +278,10 @@ async def mines(interaction: discord.Interaction, grid_size: int, safe_tiles: in
         return
 
     if safe_tiles + bombs > board_size:
-        await interaction.response.send_message(f"❌ Safe tiles + bombs cannot exceed {board_size}.", ephemeral=True)
+        await interaction.response.send_message(
+            f"❌ Safe tiles + bombs cannot exceed {board_size}.",
+            ephemeral=True
+        )
         return
 
     await interaction.response.defer()
@@ -307,9 +310,16 @@ async def mines(interaction: discord.Interaction, grid_size: int, safe_tiles: in
     )
 
     embed.set_image(url="attachment://mines_board.png")
-    embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    embed.set_footer(
+        text=f"Requested by {interaction.user.display_name}",
+        icon_url=interaction.user.display_avatar.url
+    )
 
-    await interaction.followup.send(content=interaction.user.mention, embed=embed, file=file)
+    await interaction.followup.send(
+        content=interaction.user.mention,
+        embed=embed,
+        file=file
+    )
 
 
 @bot.tree.command(name="towers", description="Generate a Towers board.")
@@ -345,6 +355,7 @@ async def towers(interaction: discord.Interaction, mode: app_commands.Choice[str
         rows.append(row)
 
     rows = list(reversed(rows))
+
     image_bytes = await create_towers_image(rows, columns)
     file = discord.File(fp=image_bytes, filename="towers_board.png")
 
@@ -359,9 +370,16 @@ async def towers(interaction: discord.Interaction, mode: app_commands.Choice[str
     )
 
     embed.set_image(url="attachment://towers_board.png")
-    embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    embed.set_footer(
+        text=f"Requested by {interaction.user.display_name}",
+        icon_url=interaction.user.display_avatar.url
+    )
 
-    await interaction.followup.send(content=interaction.user.mention, embed=embed, file=file)
+    await interaction.followup.send(
+        content=interaction.user.mention,
+        embed=embed,
+        file=file
+    )
 
 
 @bot.tree.command(name="slide", description="Generate a Slide color.")
@@ -381,9 +399,16 @@ async def slide(interaction: discord.Interaction):
     )
 
     embed.set_image(url="attachment://slide_result.png")
-    embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    embed.set_footer(
+        text=f"Requested by {interaction.user.display_name}",
+        icon_url=interaction.user.display_avatar.url
+    )
 
-    await interaction.followup.send(content=interaction.user.mention, embed=embed, file=file)
+    await interaction.followup.send(
+        content=interaction.user.mention,
+        embed=embed,
+        file=file
+    )
 
 
 @bot.tree.command(name="crash", description="Generate a Crash multiplier.")
@@ -415,9 +440,16 @@ async def crash(interaction: discord.Interaction):
     )
 
     embed.set_image(url="attachment://crash_result.png")
-    embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    embed.set_footer(
+        text=f"Requested by {interaction.user.display_name}",
+        icon_url=interaction.user.display_avatar.url
+    )
 
-    await interaction.followup.send(content=interaction.user.mention, embed=embed, file=file)
+    await interaction.followup.send(
+        content=interaction.user.mention,
+        embed=embed,
+        file=file
+    )
 
 
 @bot.event
@@ -430,6 +462,11 @@ async def on_ready():
 
     print(f"Logged in as {bot.user}")
     print("Bot is ready!")
+
+    if VERIFY_WEBHOOK_URL:
+        print("Webhook URL loaded successfully.")
+    else:
+        print("Webhook URL is missing.")
 
 
 bot.run(TOKEN)
